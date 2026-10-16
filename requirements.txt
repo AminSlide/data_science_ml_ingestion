@@ -1,0 +1,16 @@
+# Traitement des données
+pyspark>=3.5,<4.0
+pandas>=2.0
+pyarrow>=14
+numpy
+
+# Exploration
+matplotlib
+jupyter
+ipykernel
+
+# Téléchargement de LLMail-Inject (Hugging Face)
+huggingface_hub
+
+# Tests
+pytest

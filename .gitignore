@@ -1,0 +1,28 @@
+# Données : jamais versionnées (trop lourdes, et téléchargeables)
+data/*
+!data/README.md
+
+# Environnement Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Spark
+spark-warehouse/
+metastore_db/
+derby.log
+*.crc
+
+# Modèles et sorties lourdes
+models/
+*.parquet
+
+# Éditeurs et système
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
