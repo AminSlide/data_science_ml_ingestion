@@ -175,6 +175,9 @@ def build_llmail(spark: SparkSession, raw_dir: Path = LLMAIL_RAW, out_dir: Path 
         F.max("scheduled_time").alias("last_seen"),
         F.sort_array(F.collect_set("level")).alias("levels"),
         F.max("success").alias("success_any"),
+        # Au moins une soumission a fait envoyer un mail à l'adresse de l'attaquant : le texte est
+        # alors une injection à coup sûr, quelle que soit son étiquette.
+        F.max(F.col("exfil_sent") & F.col("exfil_destination")).alias("exfil_target_any"),
     )
     # Jointure à gauche depuis les étiquettes : un texte sans soumission retrouvée est gardé
     # (métadonnées vides) pour qu'on puisse le compter.

@@ -1,12 +1,13 @@
 # Données
 
-Ce dossier n'est pas versionné, à l'exception de ce fichier.
+Ce dossier n'est pas versionné, à l'exception de ce fichier et de `annotations/`.
 
 | Dossier | Contenu |
 |---|---|
 | `raw/` | Fichiers téléchargés, jamais modifiés |
 | `interim/` | Parquet après ingestion et nettoyage |
 | `processed/` | Jeux finaux utilisés par les modèles |
+| `annotations/` | Échantillon à annoter, guide et annotations manuelles (versionnés) |
 
 Les instructions de téléchargement sont dans le README à la racine du dépôt.
 
@@ -24,6 +25,7 @@ Produites par `python -m scripts.ingest_llmail`, partitionnées par `phase` (1 o
 | `label_reason`, `judge_category`, `judge_answer` | Origine de l'étiquette (`api_triggered` ou `judge`), technique et justification du juge |
 | `n_submissions`, `n_teams`, `first_team_id`, `first_seen`, `last_seen` | Soumissions de ce texte : nombre, équipes, auteur et date de la première, date de la dernière |
 | `levels`, `success_any` | Niveaux où il a été soumis, réussite complète au moins une fois |
+| `exfil_target_any` | Au moins une soumission a fait envoyer un mail à l'adresse de l'attaquant : injection certaine |
 
 **`llmail_submissions/`** : une ligne par soumission, reliée à `llmail_texts` par `text_id`.
 
@@ -34,3 +36,13 @@ Produites par `python -m scripts.ingest_llmail`, partitionnées par `phase` (1 o
 | `scheduled_time`, `started_time`, `completed_time` | Dates (UTC) |
 | `email_retrieved`, `defense_undetected`, `exfil_sent`, `exfil_destination`, `exfil_content`, `success` | Objectifs atteints ; `success` si les cinq le sont |
 | `labelled` | Faux pour les 2,6 % de soumissions absentes des fichiers d'étiquettes |
+
+## `annotations/`
+
+Annotation manuelle de l'étiquette (étape 2, section 3 du notebook 02).
+
+| Fichier | Contenu |
+|---|---|
+| `GUIDE.md` | Consignes pour les annotateurs |
+| `echantillon.csv` | Les 200 textes à annoter (`text_id`, `text`), tirés par `scripts/sample_annotations.py`. Sans l'avis du juge, exprès |
+| `annotateur_<prénom>.csv` | Réponses d'un annotateur (`text_id`, `etiquette`, `technique`, `commentaire`), écrites par `scripts/annotate.py` |

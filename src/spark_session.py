@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import warnings
+from pathlib import Path
 
 from pyspark.sql import SparkSession
 
@@ -13,6 +14,10 @@ def get_spark(app_name: str = "injection-detector", driver_memory: str = "3g") -
     # sinon il cherche un "python" quelconque dans le PATH.
     os.environ.setdefault("PYSPARK_PYTHON", sys.executable)
     os.environ.setdefault("PYSPARK_DRIVER_PYTHON", sys.executable)
+    # Journal de Spark réglé dans conf/log4j2.properties.
+    os.environ.setdefault("SPARK_CONF_DIR", str(Path(__file__).resolve().parents[1] / "conf"))
+    # En local, Spark n'a pas besoin du réseau : évite l'avertissement « resolves to a loopback address ».
+    os.environ.setdefault("SPARK_LOCAL_IP", "127.0.0.1")
 
     if os.name == "nt" and not os.environ.get("HADOOP_HOME"):
         warnings.warn(
@@ -38,5 +43,7 @@ def get_spark(app_name: str = "injection-detector", driver_memory: str = "3g") -
         # Arrow accélère toPandas(), createDataFrame(pandas_df) et les pandas_udf.
         .config("spark.sql.execution.arrow.pyspark.enabled", "true")
         .config("spark.sql.session.timeZone", "UTC")
+        # La barre de progression s'imprimerait dans les sorties des notebooks.
+        .config("spark.ui.showConsoleProgress", "false")
         .getOrCreate()
     )

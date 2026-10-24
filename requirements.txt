@@ -9,6 +9,11 @@ matplotlib
 jupyter
 ipykernel
 
+# Modèles et métriques (dont le kappa de Cohen de l'annotation)
+scikit-learn
+# scipy 1.15 (dépendance de scikit-learn) ne se charge pas sous macOS 27 : erreur dyld « __thread_bss ».
+scipy<1.15
+
 # Téléchargement de LLMail-Inject (Hugging Face)
 huggingface_hub
 

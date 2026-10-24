@@ -1,6 +1,7 @@
 # Données : jamais versionnées (trop lourdes, et téléchargeables)
 data/*
 !data/README.md
+!data/annotations/
 
 # Environnement Python
 .venv/

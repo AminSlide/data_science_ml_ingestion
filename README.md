@@ -39,6 +39,11 @@ Dans `data/raw/` (dossier non versionné) :
 .venv/bin/python -m scripts.download_data   # LLMail-Inject, révision figée
 .venv/bin/python -m scripts.ingest_llmail   # jointure étiquettes ↔ soumissions → data/interim/
 .venv/bin/python -m pytest
+
+# Étape 2 : audit (notebook) et annotation manuelle
+.venv/bin/jupyter nbconvert --to notebook --execute --inplace notebooks/02_audit_etiquette.ipynb
+.venv/bin/python -m scripts.sample_annotations   # échantillon de 200 textes, déjà tiré et versionné
+.venv/bin/python -m scripts.annotate <prénom>    # guide : data/annotations/GUIDE.md
 ```
 
 ## Question de recherche et protocole
@@ -67,6 +72,20 @@ Mesurés à l'ingestion (`scripts/ingest_llmail.py`) sur les fichiers étiqueté
 - **La jointure est presque complète.** 7 textes étiquetés n'ont pas de soumission correspondante (gabarit différent). 12 087 soumissions (2,6 %) sont absentes des fichiers d'étiquettes ; elles restent dans `llmail_submissions` avec `labelled = false`.
 - **Peu de mails légitimes dans le même univers.** `emails_for_fp_tests.json` contient 203 mails, dont 160 distincts ; `scenarios.json` contient 78 mails de contexte distincts. Aucun recoupement entre les deux.
 
+### Audit de l'étiquette (étape 2)
+
+Détails et figures : `notebooks/02_audit_etiquette.ipynb`.
+
+- **`unclear` veut dire ingénierie sociale.** Le juge classe 99 % des textes `unclear` en « ingénierie sociale », et 94 à 98 % des textes d'ingénierie sociale sont `unclear`. Écarter les `unclear` retire donc presque toute l'ingénierie sociale du corpus.
+- **Le juge se trompe parfois de façon certaine.** 832 textes `false` ou `unclear` ont fait envoyer le mail à l'adresse de l'attaquant : ce sont des injections.
+- **Le juge est stable sur ses décisions nettes.** Deux quasi-doublons reçoivent `true` et `false` dans moins de 0,3 % des paires. Les désaccords passent par `unclear`.
+- **La production est très concentrée.** La première équipe écrit 23 % des textes en phase 1 et 27 % en phase 2 ; dix équipes en écrivent 68 % et 84 %. Une seule équipe écrit 63 % des `unclear` de la phase 2.
+- **Les deux phases n'ont pas la même forme.**
+  - Idéogrammes chinois : 22 % des textes en phase 1, 1 % en phase 2.
+  - Faux marqueurs de rôle (`<|user|>`) : 32 % contre 6 %.
+  - Tags Unicode invisibles : trente fois plus fréquents en phase 2.
+- **La règle qui produit `api_triggered` ne se reproduit pas.** 4 452 textes passés par le juge ont aussi déclenché l'appel d'API.
+
 ### Hypothèses
 
 Formulées avant les expériences :
@@ -79,7 +98,16 @@ Formulées avant les expériences :
 
 ### Protocole
 
-1. **Étiquette.** Classe positive : `attack_attempt = true`. Les textes `unclear` sont exclus du jeu principal, et une analyse de sensibilité mesure l'effet de ce choix (`unclear` compté positif, puis négatif). La fiabilité du juge LLM est estimée sur 200 textes annotés à la main (accord, kappa de Cohen).
+1. **Étiquette** (`binary_label` dans `src/labels.py`).
+   - `attack_attempt = true` donne une injection, `false` une non-injection.
+   - Un texte qui a fait envoyer le mail à l'adresse de l'attaquant est une injection, quelle que soit son étiquette.
+   - Les `unclear` (ingénierie sociale) sont écartés par défaut. Règle fixée avant l'annotation : si au moins 90 % des `unclear` annotés sont des injections, ils deviennent positifs. Sinon, les compter positifs reste une analyse de sensibilité. Dans les deux cas, le rappel est mesuré à part sur l'ingénierie sociale.
+   - La fiabilité du juge est estimée sur 200 textes annotés à la main :
+     - à l'aveugle, l'annotateur ne voyant pas l'avis du juge ;
+     - en strates selon le mécanisme d'étiquetage : 20 API, 60 `true`, 60 `unclear` et 60 `false` du juge ;
+     - avec un seul texte par groupe de quasi-doublons.
+     
+     On calcule l'accord repondéré avec le juge, et le kappa de Cohen entre deux annotateurs.
 2. **Négatifs et raccourcis.** Négatifs : mails Enron, textes LLMail `attack_attempt = false`, mails légitimes du challenge (`emails_for_fp_tests.json`, `scenarios.json`).
    - Les mails Enron sont mis au même gabarit, sans en-têtes, citations ni signatures.
    - Les adresses e-mail sont masquées dans les deux classes.
@@ -90,6 +118,7 @@ Formulées avant les expériences :
    - Les quasi-doublons sont regroupés avec `MinHashLSH` (Spark ML), et un groupe reste entier du même côté du découpage. Variante : découpage par équipe.
    - Découpage temporel : entraînement sur la phase 1, test sur la phase 2.
    - Le jeu de test est figé dès sa création et n'est utilisé qu'une fois, à la fin.
+   - Contrôle : les résultats doivent tenir sans l'équipe la plus productive (23 à 27 % des textes).
 4. **Nettoyage, le facteur étudié.** Chaque étape est testée seule à partir du texte brut (ablation) :
    - minuscules ;
    - normalisation NFKC ;
@@ -121,7 +150,8 @@ Formulées avant les expériences :
 ### Avancement
 
 - [x] 1. Téléchargement (révision figée) et jointure étiquettes ↔ métadonnées → `data/interim/`
-- [ ] 2. Audit qualité et analyse de l'étiquette
+- [x] 2. Audit qualité et analyse de l'étiquette (`notebooks/02_audit_etiquette.ipynb`)
+- [ ] 2 bis. Annotation manuelle des 200 textes, puis choix de la politique pour `unclear`
 - [ ] 3. Exploration : techniques par défense, LLM et phase, évolution dans le temps, succès des attaques
 - [ ] 4. Corpus sans raccourcis : Enron, négatifs difficiles, témoin
 - [ ] 5. Quasi-doublons et découpages, jeu de test figé
@@ -133,10 +163,11 @@ Formulées avant les expériences :
 ## Organisation
 
 ```
-data/        raw → interim → processed (non versionné)
+data/        raw → interim → processed (non versionné) ; annotations/ (versionné)
 notebooks/   exploration et figures, appellent le code de src/
-src/         code réutilisable : config, SparkSession, nettoyage, features, modèles
+src/         code réutilisable : config, SparkSession, ingestion, audit, étiquette, figures
 scripts/     points d'entrée pour relancer le pipeline
-tests/       tests des fonctions de nettoyage
+tests/       tests du code de src/
 reports/     figures et rapport
+conf/        configuration du journal de Spark
 ```
