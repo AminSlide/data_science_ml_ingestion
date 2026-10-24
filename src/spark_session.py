@@ -1,6 +1,7 @@
 """Création de la SparkSession, en un seul endroit pour tout le projet."""
 
 import os
+import subprocess
 import sys
 import warnings
 
@@ -18,6 +19,13 @@ def get_spark(app_name: str = "injection-detector", driver_memory: str = "3g") -
             "HADOOP_HOME n'est pas défini : Spark pourra lire mais pas écrire de Parquet "
             "sous Windows (il faut winutils.exe et hadoop.dll dans %HADOOP_HOME%\\bin)."
         )
+
+    # Spark 3.5 ne démarre pas avec un Java récent (25 par exemple). Sous macOS, si
+    # JAVA_HOME n'est pas défini, on prend Java 17 quand il est installé.
+    if sys.platform == "darwin" and not os.environ.get("JAVA_HOME"):
+        java17 = subprocess.run(["/usr/libexec/java_home", "-v", "17"], capture_output=True, text=True)
+        if java17.returncode == 0:
+            os.environ["JAVA_HOME"] = java17.stdout.strip()
 
     return (
         SparkSession.builder.appName(app_name)

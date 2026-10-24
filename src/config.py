@@ -10,6 +10,9 @@ INTERIM = DATA / "interim"
 PROCESSED = DATA / "processed"
 FIGURES = ROOT / "reports" / "figures"
 
+# snapshot_download garde l'arborescence du dépôt Hugging Face (dossier data/).
+LLMAIL_RAW = RAW / "llmail" / "data"
+
 SEED = 42
 
 for folder in (RAW, INTERIM, PROCESSED, FIGURES):
